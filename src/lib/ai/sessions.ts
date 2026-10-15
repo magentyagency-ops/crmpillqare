@@ -114,7 +114,23 @@ export async function finalizeSession(sessionId: string, opts: { durationSec?: n
       data: { status: "READY", error: "IA non configurée : complétez le compte rendu manuellement à partir de la transcription." },
     });
   }
-  await generateReport(sessionId);
+  // Quelques mots seulement (essai, enregistrement coupé) : pas de compte rendu automatique possible
+  if (transcript.trim().length < 40) {
+    return db.aiSession.update({
+      where: { id: sessionId },
+      data: { status: "FAILED", error: "Enregistrement trop court pour un compte rendu automatique. Complétez la transcription ou rédigez le compte rendu vous-même." },
+    });
+  }
+  try {
+    await generateReport(sessionId);
+  } catch (error) {
+    // Échec de l'IA : la session sort de « en cours » avec la transcription conservée (relance possible depuis l'écran)
+    await db.aiSession.update({
+      where: { id: sessionId },
+      data: { status: "FAILED", error: `Compte rendu non généré : ${error instanceof Error ? error.message : String(error)}` },
+    });
+    throw error;
+  }
   return db.aiSession.findUniqueOrThrow({ where: { id: sessionId } });
 }
 

@@ -1,0 +1,71 @@
+# CRM PillQare — déploiement sur un serveur (VPS) avec Docker.
+#   1. npm run setup -- --production https://crm.votre-domaine.fr   (crée .env avec les secrets)
+#   2. Ajoutez POSTGRES_PASSWORD=... dans .env (mot de passe de la base)
+#   3. docker compose up -d --build                    (HTTP sur le port 3000)
+#      ou DOMAIN=crm.votre-domaine.fr docker compose --profile https up -d --build   (HTTPS automatique)
+
+x-app-env: &app-env
+  DATABASE_URL: postgresql://pillqare:${POSTGRES_PASSWORD:?Définissez POSTGRES_PASSWORD dans .env}@db:5432/pillqare_crm
+  EMBEDDED_POSTGRES: "false"
+  # Les tâches de fond (relances, rappels, synchronisations) tournent dans le service « worker »
+  SCHEDULER_MODE: external
+
+services:
+  db:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: pillqare_crm
+      POSTGRES_USER: pillqare
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Définissez POSTGRES_PASSWORD dans .env}
+      TZ: UTC
+    volumes:
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pillqare -d pillqare_crm"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      <<: *app-env
+    ports:
+      - "${APP_PORT:-3000}:3000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  worker:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      <<: *app-env
+    command: ["npx", "tsx", "scripts/worker.ts"]
+    depends_on:
+      app:
+        condition: service_healthy
+
+  # HTTPS automatique (Let's Encrypt) : DOMAIN doit pointer vers ce serveur (ports 80 et 443 ouverts)
+  caddy:
+    image: caddy:2
+    profiles: ["https"]
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?Définissez DOMAIN (ex. crm.votre-domaine.fr)}
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    depends_on:
+      - app
+
+volumes:
+  db-data:
+  caddy-data:

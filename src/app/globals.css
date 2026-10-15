@@ -1,0 +1,473 @@
+/* Classes Tailwind détectées uniquement dans src/ (évite de surveiller .next, les données locales, etc.) */
+@import "tailwindcss" source("..");
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-manrope), ui-sans-serif, system-ui, sans-serif;
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-brand-green: #1b7a45;
+  --color-brand-navy: #12295a;
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* Charte PillQare : bleu marine #12295A, vert #1B7A45 — interface claire et sobre */
+:root {
+  --background: #f6f7f9;
+  --foreground: #0d1526;
+  --card: #ffffff;
+  --card-foreground: #0d1526;
+  --popover: #ffffff;
+  --popover-foreground: #0d1526;
+  --primary: #12295a;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f4f9;
+  --secondary-foreground: #12295a;
+  --muted: #f2f4f7;
+  --muted-foreground: #667085;
+  --accent: #f1f4f9;
+  --accent-foreground: #12295a;
+  --destructive: #d92d20;
+  --success: #1b7a45;
+  --success-foreground: #ffffff;
+  --warning: #dc6803;
+  --border: #e7e9ee;
+  --input: #dde1e8;
+  --ring: #3b5bab;
+  --chart-1: #12295a;
+  --chart-2: #1b7a45;
+  --chart-3: #4fbe7e;
+  --chart-4: #dc6803;
+  --chart-5: #7c5cfa;
+  --radius: 0.75rem;
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.03);
+  --shadow-card-hover: 0 4px 12px -2px rgba(16, 24, 40, 0.08), 0 2px 4px -2px rgba(16, 24, 40, 0.04);
+  --sidebar: #fbfbfc;
+  --sidebar-foreground: #475467;
+  --sidebar-primary: #1b7a45;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #eef2fa;
+  --sidebar-accent-foreground: #12295a;
+  --sidebar-border: #eaecf0;
+  --sidebar-ring: #3b5bab;
+}
+
+/* Surface commune des cartes et panneaux : bordure fine + ombre douce */
+@utility surface {
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-card);
+}
+@utility surface-hover {
+  transition:
+    box-shadow 0.18s ease,
+    transform 0.18s ease,
+    border-color 0.18s ease;
+  &:hover {
+    box-shadow: var(--shadow-card-hover);
+    border-color: #d5dae3;
+    transform: translateY(-1px);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "tnum" 0;
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: #dbe4f7;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+/* Agenda (FullCalendar) façon Google Agenda */
+.fc {
+  --fc-border-color: #e3e5e8;
+  --fc-today-bg-color: transparent;
+  --fc-event-border-color: transparent;
+  --fc-now-indicator-color: #ea4335;
+  --fc-highlight-color: rgba(26, 115, 232, 0.1);
+  --fc-neutral-bg-color: #f8f9fa;
+  --fc-page-bg-color: var(--card);
+  --fc-list-event-hover-bg-color: #f1f3f4;
+  font-size: 12px;
+  color: #3c4043;
+}
+.fc .fc-scrollgrid {
+  border-left: 0;
+  border-right: 0;
+}
+.fc .fc-scrollgrid-section-header > th,
+.fc .fc-scrollgrid-section > td {
+  border-right: 0;
+}
+.fc-theme-standard td,
+.fc-theme-standard th {
+  border-color: var(--fc-border-color);
+}
+/* En-têtes de jours : jour abrégé + numéro dans une pastille */
+.fc .fc-col-header-cell {
+  border-left-color: transparent;
+  border-bottom: 0;
+}
+.fc .fc-col-header-cell-cushion {
+  padding: 6px 0 8px;
+  text-decoration: none !important;
+}
+.pq-dayhead {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  color: #70757a;
+}
+.pq-dayhead-wd {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+.pq-dayhead-num {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: 9999px;
+  font-size: 26px;
+  font-weight: 400;
+  line-height: 1;
+  color: #3c4043;
+  transition: background-color 0.15s;
+}
+a:hover > .pq-dayhead .pq-dayhead-num {
+  background: #f1f3f4;
+}
+.pq-dayhead.is-past .pq-dayhead-num {
+  color: #70757a;
+}
+.pq-dayhead.is-today {
+  color: #1a73e8;
+}
+.pq-dayhead.is-today .pq-dayhead-num,
+a:hover > .pq-dayhead.is-today .pq-dayhead-num {
+  background: #1a73e8;
+  color: #fff;
+}
+/* Grille horaire : une ligne par heure, libellés alignés sur les lignes */
+.fc .fc-timegrid-slot {
+  height: 24px;
+  border-bottom: 0;
+}
+.fc .fc-timegrid-slot-minor {
+  border-top-style: none;
+}
+.fc .fc-timegrid-slot-label {
+  border: 0 !important;
+  vertical-align: top;
+}
+.fc .fc-timegrid-slot-label-cushion {
+  display: inline-block;
+  padding: 0 8px 0 10px;
+  font-size: 10px;
+  color: #70757a;
+  transform: translateY(-50%);
+}
+.fc .fc-timegrid-slots tr:first-child .fc-timegrid-slot-label-cushion {
+  visibility: hidden;
+}
+.fc .fc-timegrid-axis {
+  border-color: transparent !important;
+}
+.fc .fc-timegrid-axis-cushion {
+  font-size: 10px;
+  color: #70757a;
+}
+.fc .fc-timegrid-col.fc-day-today {
+  background: transparent;
+}
+.fc .fc-daygrid-body-natural .fc-daygrid-day-events {
+  margin-bottom: 4px;
+}
+/* Ligne rouge de l'heure actuelle avec pastille */
+.fc .fc-timegrid-now-indicator-line {
+  border-width: 2px 0 0;
+  z-index: 5;
+}
+.fc .fc-timegrid-now-indicator-line::before {
+  content: "";
+  position: absolute;
+  left: -6px;
+  top: -7px;
+  width: 12px;
+  height: 12px;
+  border-radius: 9999px;
+  background: var(--fc-now-indicator-color);
+}
+.fc .fc-timegrid-now-indicator-arrow {
+  display: none;
+}
+/* Événements */
+.fc .fc-event {
+  cursor: pointer;
+  font-size: 12px;
+}
+.fc .fc-timegrid-event {
+  border-radius: 4px;
+  border-width: 0;
+  box-shadow: 0 0 0 1px var(--card);
+}
+.fc .fc-timegrid-event .fc-event-main {
+  padding: 0;
+}
+.fc .fc-timegrid-event-harness-inset .fc-timegrid-event,
+.fc .fc-timegrid-event.fc-event-mirror,
+.fc .fc-timegrid-more-link {
+  box-shadow: 0 0 0 1px var(--card);
+}
+.fc .fc-timegrid-event.fc-event-mirror {
+  background: #1a73e8 !important;
+  color: #fff !important;
+  box-shadow: 0 6px 10px rgba(60, 64, 67, 0.3);
+}
+.fc .pq-struck .fc-event-main span.font-medium,
+.fc .pq-struck .fc-event-main .font-medium {
+  text-decoration: line-through;
+}
+.fc .pq-approval {
+  outline: 2px dashed #7986cb;
+  outline-offset: -2px;
+}
+.fc .fc-daygrid-event {
+  border-radius: 4px;
+  margin-top: 1px;
+}
+.fc .fc-daygrid-block-event {
+  padding: 1px 0;
+}
+.fc .fc-daygrid-dot-event,
+.fc .fc-daygrid-event:not(.fc-daygrid-block-event) {
+  background: transparent !important;
+  border: 0 !important;
+  padding: 1px 0;
+}
+.fc .fc-daygrid-dot-event:hover,
+.fc .fc-daygrid-event:not(.fc-daygrid-block-event):hover {
+  background: #f1f3f4 !important;
+}
+.fc .fc-event:focus-visible {
+  outline: 2px solid #1a73e8;
+  outline-offset: 1px;
+}
+/* Vue mois */
+.pq-monthhead {
+  display: block;
+  padding: 6px 0 2px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: #70757a;
+}
+.fc .fc-daygrid-day-top {
+  justify-content: center;
+}
+.fc .fc-daygrid-day-number {
+  padding: 4px 0 2px;
+  text-decoration: none !important;
+}
+.pq-daynum {
+  display: grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 4px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #3c4043;
+}
+a:hover > .pq-daynum {
+  background: #f1f3f4;
+}
+.pq-daynum.is-today,
+a:hover > .pq-daynum.is-today {
+  background: #1a73e8;
+  color: #fff;
+}
+.fc .fc-day-other .pq-daynum {
+  color: #9aa0a6;
+}
+.fc .fc-daygrid-day.fc-day-today {
+  background: transparent;
+}
+.fc .fc-daygrid-more-link {
+  margin-left: 4px;
+  font-weight: 500;
+  color: #3c4043;
+}
+.fc .fc-popover {
+  border: 0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 24px 38px 3px rgba(0, 0, 0, 0.14), 0 9px 46px 8px rgba(0, 0, 0, 0.12);
+}
+.fc .fc-popover-header {
+  background: var(--card);
+  padding: 10px 12px 4px;
+  font-size: 13px;
+}
+/* Vue planning (liste) */
+.fc .fc-list {
+  border: 0;
+}
+.fc .fc-list-day-cushion {
+  background: var(--card) !important;
+  padding: 14px 16px 6px;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: #70757a;
+}
+.fc .fc-list-day-cushion a {
+  text-decoration: none !important;
+}
+.fc .fc-list-day.fc-day-today .fc-list-day-cushion {
+  color: #1a73e8;
+}
+.fc .fc-list-event td {
+  border-color: transparent;
+  padding: 9px 14px;
+  font-size: 13px;
+}
+.fc .fc-list-event-dot {
+  border-radius: 4px;
+  border-width: 6px;
+}
+.fc .fc-list-empty {
+  background: var(--card);
+  color: #70757a;
+}
+.fc .fc-list-event.pq-past .fc-list-event-time,
+.fc .fc-list-event.pq-past .fc-list-event-title {
+  opacity: 0.6;
+}
+.fc .fc-list-event.pq-past {
+  border-left: 0 !important;
+}
+
+/* Corps d'email HTML affiché dans le CRM */
+.email-body {
+  overflow-wrap: anywhere;
+}
+.email-body img {
+  max-width: 100%;
+  height: auto;
+}
+
+@media print {
+  .no-print {
+    display: none !important;
+  }
+}
+.fc .fc-event.fc-event-draggable {
+  cursor: grab;
+}
+.fc .fc-event-dragging {
+  cursor: grabbing;
+  box-shadow: 0 8px 16px rgba(60, 64, 67, 0.35) !important;
+}
+
+/* Guide interactif : voile, projecteur et zoom */
+.pq-guide-veil {
+  position: fixed;
+  background: rgba(15, 23, 42, 0.58);
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.pq-guide-hole {
+  position: fixed;
+  border-radius: 14px;
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.95), 0 0 0 9px rgba(139, 92, 246, 0.25);
+  transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: pq-guide-pulse 2s ease-in-out infinite;
+}
+@keyframes pq-guide-pulse {
+  50% {
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.95), 0 0 0 14px rgba(139, 92, 246, 0.12);
+  }
+}
+.pq-guide-card {
+  transition:
+    top 0.35s cubic-bezier(0.4, 0, 0.2, 1),
+    left 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.pq-guide-in {
+  animation: pq-guide-in 0.3s ease-out;
+}
+@keyframes pq-guide-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+.pq-guide-zoom {
+  transform: scale(1.12);
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .pq-guide-veil,
+  .pq-guide-hole,
+  .pq-guide-card,
+  .pq-guide-zoom {
+    transition: none;
+    animation: none;
+  }
+}

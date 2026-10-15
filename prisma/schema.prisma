@@ -1,0 +1,1419 @@
+// CRM PillQare — modèle de données
+// Conventions : montants en Decimal(12,2) EUR, dates en UTC (affichage Europe/Paris).
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ───────────────────────────── Enums ─────────────────────────────
+
+enum Role {
+  ADMIN
+  MANAGER
+  SALES
+}
+
+enum ContactKind {
+  B2B
+  B2C
+}
+
+enum ContactStatus {
+  PROSPECT
+  CUSTOMER
+  PARTNER
+  INACTIVE
+}
+
+enum ContactSource {
+  MANUAL
+  WEBSITE_FORM
+  BOOKING
+  SHOPIFY
+  EMAIL
+  IMPORT
+  REFERRAL
+  EVENT
+  PHONE
+  LINKEDIN
+  OTHER
+}
+
+enum DealStage {
+  PROSPECT
+  CONTACTED
+  MEETING
+  QUOTE
+  FOLLOW_UP
+  WON
+  LOST
+}
+
+enum NextActionType {
+  CALL
+  EMAIL
+  MEETING
+  FOLLOW_UP
+  QUOTE
+  DEMO
+  TASK
+}
+
+enum ActivityType {
+  CALL
+  EMAIL_SENT
+  EMAIL_RECEIVED
+  MEETING
+  MEETING_BOOKED
+  MEETING_CANCELLED
+  MEETING_REPORT
+  NOTE
+  TASK_COMPLETED
+  DEAL_CREATED
+  STAGE_CHANGED
+  OWNER_CHANGED
+  QUOTE_CREATED
+  QUOTE_SENT
+  QUOTE_VIEWED
+  QUOTE_ACCEPTED
+  QUOTE_REFUSED
+  ORDER_PLACED
+  FORM_SUBMITTED
+  TRIAL_EVENT
+  SEQUENCE_EVENT
+  SATISFACTION
+  SYSTEM
+}
+
+enum CallDirection {
+  OUTBOUND
+  INBOUND
+}
+
+enum CallOutcome {
+  REACHED
+  NO_ANSWER
+  VOICEMAIL
+  BUSY
+  WRONG_NUMBER
+  CALLBACK_REQUESTED
+}
+
+enum TaskType {
+  CALL
+  EMAIL
+  FOLLOW_UP
+  CALLBACK
+  MEETING_PREP
+  MEETING_REPORT
+  QUOTE
+  INSTALLATION
+  ONBOARDING
+  SATISFACTION
+  TRIAL
+  TODO
+}
+
+enum TaskStatus {
+  OPEN
+  DONE
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  NORMAL
+  HIGH
+  URGENT
+}
+
+enum TaskSource {
+  MANUAL
+  SEQUENCE
+  WEB_FORM
+  SHOPIFY
+  BOOKING
+  AI
+  SYSTEM
+}
+
+enum MeetingType {
+  VIDEO
+  PHONE
+  IN_PERSON
+}
+
+enum MeetingStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum MeetingSource {
+  MANUAL
+  BOOKING
+  GOOGLE
+}
+
+enum MailboxProvider {
+  GOOGLE
+  IMAP
+}
+
+enum IntegrationStatus {
+  ACTIVE
+  ERROR
+  DISCONNECTED
+}
+
+enum EmailDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum EmailStatus {
+  QUEUED
+  SENDING
+  SENT
+  FAILED
+  RECEIVED
+}
+
+enum TemplateCategory {
+  PROSPECTION
+  FOLLOW_UP
+  MEETING
+  QUOTE
+  TRIAL
+  POST_PURCHASE
+  OTHER
+}
+
+enum SequenceTrigger {
+  STAGE_ENTERED
+  WEB_FORM
+  ORDER_PAID
+  QUOTE_SENT
+  TRIAL_STARTED
+  MANUAL
+}
+
+enum SequenceStepType {
+  EMAIL
+  CALL
+  TASK
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  STOPPED
+}
+
+enum EnrollmentStopReason {
+  REPLIED
+  STAGE_CHANGED
+  MEETING_BOOKED
+  DEAL_CLOSED
+  MANUAL
+  UNSUBSCRIBED
+  ERROR
+  QUOTE_RESENT
+}
+
+enum StepRunStatus {
+  SCHEDULED
+  PROCESSING
+  PENDING_APPROVAL
+  SENT
+  TASK_OPEN
+  DONE
+  SKIPPED
+  CANCELLED
+  FAILED
+}
+
+enum QuoteStatus {
+  DRAFT
+  SENT
+  ACCEPTED
+  REFUSED
+  EXPIRED
+}
+
+enum TrialStatus {
+  PLANNED
+  EQUIPMENT_SENT
+  IN_PROGRESS
+  EVALUATION
+  CONVERTED
+  ENDED
+  CANCELLED
+}
+
+enum TrialResult {
+  POSITIVE
+  NEUTRAL
+  NEGATIVE
+}
+
+enum ProductType {
+  HARDWARE
+  SUBSCRIPTION
+  SERVICE
+  CONSUMABLE
+}
+
+enum OrderSource {
+  SHOPIFY
+  MANUAL
+}
+
+enum ShopifyAuthMode {
+  CLIENT_CREDENTIALS
+  OAUTH
+  ACCESS_TOKEN
+}
+
+enum AssignmentStrategy {
+  ROUND_ROBIN
+  SEGMENT
+  FIXED
+}
+
+enum AiSessionKind {
+  CALL
+  VIDEO
+  IN_PERSON
+}
+
+enum AiSessionStatus {
+  RECORDING
+  TRANSCRIBING
+  ANALYZING
+  READY
+  VALIDATED
+  FAILED
+}
+
+enum TranscriptSource {
+  LIVE
+  UPLOAD
+  PASTE
+  GOOGLE_MEET
+}
+
+enum SegmentStatus {
+  PENDING
+  DONE
+  FAILED
+}
+
+enum NotificationType {
+  LEAD_ASSIGNED
+  EMAIL_REPLY
+  MEETING_BOOKED
+  MEETING_CANCELLED
+  MEETING_REMINDER
+  TASK_DUE
+  QUOTE_VIEWED
+  QUOTE_ACCEPTED
+  QUOTE_REFUSED
+  ORDER_PLACED
+  REPORT_READY
+  APPROVAL_NEEDED
+  SATISFACTION
+  INTEGRATION_ERROR
+  SYSTEM
+}
+
+enum JobStatus {
+  PENDING
+  RUNNING
+  DONE
+  FAILED
+}
+
+enum UserTokenType {
+  INVITE
+  PASSWORD_RESET
+}
+
+// ───────────────────────────── Utilisateurs & sécurité ─────────────────────────────
+
+model User {
+  id           String  @id @default(cuid())
+  email        String  @unique
+  firstName    String
+  lastName     String
+  passwordHash String?
+  role         Role    @default(SALES)
+  active       Boolean @default(true)
+  phone        String?
+  jobTitle     String?
+  color        String  @default("#2563eb")
+  signature    String? @db.Text
+  timezone     String  @default("Europe/Paris")
+
+  // Réception des leads entrants (round-robin / par cible)
+  receivesLeads Boolean @default(true)
+
+  // Prise de rendez-vous en ligne
+  bookingEnabled        Boolean     @default(true)
+  bookingSlug           String      @unique
+  bookingTitle          String      @default("Échange avec PillQare")
+  bookingDescription    String?     @db.Text
+  bookingDurationMin    Int         @default(30)
+  bookingBufferMin      Int         @default(10)
+  bookingMinNoticeHours Int         @default(4)
+  bookingMaxDaysAhead   Int         @default(30)
+  bookingMeetingType    MeetingType @default(VIDEO)
+  bookingLocation       String?
+  /// Lien de visio permanent (Meet, Zoom, Teams…) utilisé quand aucun lien Google Meet n'est généré
+  videoRoomUrl          String?
+  /// { "1": [["09:00","12:30"],["14:00","18:00"]], … } (0 = dimanche)
+  workingHours          Json?
+
+  // Préférences
+  dailyDigest         Boolean @default(true)
+  syncTasksToCalendar Boolean @default(false)
+
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  sessions         Session[]
+  tokens           UserToken[]
+  segments         UserSegment[]
+  googleAccount    GoogleAccount?
+  mailboxes        Mailbox[]
+  ownedContacts    Contact[]           @relation("ContactOwner")
+  ownedCompanies   Company[]           @relation("CompanyOwner")
+  deals            Deal[]              @relation("DealOwner")
+  createdDeals     Deal[]              @relation("DealCreator")
+  assignedTasks    Task[]              @relation("TaskAssignee")
+  createdTasks     Task[]              @relation("TaskCreator")
+  activities       Activity[]
+  meetings         Meeting[]           @relation("MeetingOrganizer")
+  quotes           Quote[]
+  trials           Trial[]
+  emails           EmailMessage[]
+  templates        EmailTemplate[]
+  enrollments      SequenceEnrollment[]
+  aiSessions       AiSession[]         @relation("AiSessionUser")
+  validatedReports AiSession[]         @relation("AiSessionValidator")
+  notifications    Notification[]
+  stageChanges     DealStageHistory[]
+  formSubmissions  FormSubmission[]
+  fixedForms       WebForm[]
+  agentConversations AgentConversation[]
+}
+
+model Session {
+  id         String   @id @default(cuid())
+  tokenHash  String   @unique
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  lastSeenAt DateTime @default(now())
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+}
+
+model UserToken {
+  id        String        @id @default(cuid())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      UserTokenType
+  tokenHash String        @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime      @default(now())
+
+  @@index([userId, type])
+}
+
+// ───────────────────────────── Cibles & référentiels ─────────────────────────────
+
+model Segment {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  kind        ContactKind
+  color       String      @default("#64748b")
+  description String?
+  /// Mots-clés de détection automatique (formulaires, imports) : « ehpad », « maison de retraite »…
+  keywords    String[]    @default([])
+  position    Int         @default(0)
+  active      Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+
+  users     UserSegment[]
+  contacts  Contact[]
+  companies Company[]
+  deals     Deal[]
+  forms     WebForm[]
+}
+
+model UserSegment {
+  userId    String
+  segmentId String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  segment   Segment @relation(fields: [segmentId], references: [id], onDelete: Cascade)
+
+  @@id([userId, segmentId])
+}
+
+model LostReason {
+  id       String  @id @default(cuid())
+  label    String  @unique
+  position Int     @default(0)
+  active   Boolean @default(true)
+  deals    Deal[]
+}
+
+model Product {
+  id               String      @id @default(cuid())
+  sku              String?     @unique
+  name             String
+  description      String?     @db.Text
+  type             ProductType @default(HARDWARE)
+  unitPriceHT      Decimal     @db.Decimal(12, 2)
+  vatRate          Decimal     @default(20) @db.Decimal(5, 2)
+  unit             String      @default("unité")
+  active           Boolean     @default(true)
+  shopifyProductId String?
+  shopifyVariantId String?     @unique
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  quoteItems QuoteItem[]
+  trialItems TrialItem[]
+  orderItems OrderItem[]
+}
+
+// ───────────────────────────── Comptes & contacts ─────────────────────────────
+
+model Company {
+  id         String      @id @default(cuid())
+  name       String
+  kind       ContactKind @default(B2B)
+  segmentId  String?
+  segment    Segment?    @relation(fields: [segmentId], references: [id], onDelete: SetNull)
+  ownerId    String?
+  owner      User?       @relation("CompanyOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  siret      String?
+  website    String?
+  domain     String?
+  email      String?
+  phone      String?
+  address    String?
+  postalCode String?
+  city       String?
+  country    String      @default("France")
+  /// Nombre de lits / résidents / patients suivis (EHPAD, hôpital, SSIAD…)
+  capacity   Int?
+  employees  Int?
+  notes      String?     @db.Text
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  archivedAt DateTime?
+
+  contacts   Contact[]
+  deals      Deal[]
+  activities Activity[]
+  tasks      Task[]
+  meetings   Meeting[]
+  quotes     Quote[]
+  trials     Trial[]
+  orders     Order[]
+
+  @@index([name])
+  @@index([domain])
+  @@index([segmentId])
+}
+
+model Contact {
+  id                String        @id @default(cuid())
+  kind              ContactKind   @default(B2C)
+  status            ContactStatus @default(PROSPECT)
+  civility          String?
+  firstName         String?
+  lastName          String?
+  email             String?
+  emailNormalized   String?       @unique
+  phone             String?
+  phoneNormalized   String?
+  jobTitle          String?
+  companyId         String?
+  company           Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  segmentId         String?
+  segment           Segment?      @relation(fields: [segmentId], references: [id], onDelete: SetNull)
+  ownerId           String?
+  owner             User?         @relation("ContactOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  source            ContactSource @default(MANUAL)
+  sourceDetail      String?
+  address           String?
+  postalCode        String?
+  city              String?
+  country           String?       @default("France")
+  notes             String?       @db.Text
+  tags              String[]      @default([])
+  doNotContact      Boolean       @default(false)
+  unsubscribedAt    DateTime?
+  unsubscribeToken  String        @unique @default(cuid())
+  shopifyCustomerId String?       @unique
+  lastActivityAt    DateTime?
+  lastContactedAt   DateTime?
+  lastInboundAt     DateTime?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  archivedAt        DateTime?
+
+  deals           Deal[]
+  activities      Activity[]
+  tasks           Task[]
+  meetings        Meeting[]
+  emails          EmailMessage[]
+  enrollments     SequenceEnrollment[]
+  quotes          Quote[]
+  trials          Trial[]
+  orders          Order[]
+  aiSessions      AiSession[]
+  formSubmissions FormSubmission[]
+
+  @@index([phoneNormalized])
+  @@index([ownerId])
+  @@index([companyId])
+  @@index([segmentId])
+  @@index([status])
+  @@index([lastName, firstName])
+}
+
+// ───────────────────────────── Pipeline commercial ─────────────────────────────
+
+model Deal {
+  id               String          @id @default(cuid())
+  title            String
+  kind             ContactKind     @default(B2B)
+  contactId        String
+  contact          Contact         @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  companyId        String?
+  company          Company?        @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  segmentId        String?
+  segment          Segment?        @relation(fields: [segmentId], references: [id], onDelete: SetNull)
+  ownerId          String
+  owner            User            @relation("DealOwner", fields: [ownerId], references: [id])
+  createdById      String?
+  createdBy        User?           @relation("DealCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  stage            DealStage       @default(PROSPECT)
+  stageEnteredAt   DateTime        @default(now())
+  amount           Decimal?        @db.Decimal(12, 2)
+  quantity         Int?
+  probability      Int?
+  expectedCloseAt  DateTime?
+  nextActionType   NextActionType?
+  nextActionLabel  String?
+  nextActionAt     DateTime?
+  lostReasonId     String?
+  lostReason       LostReason?     @relation(fields: [lostReasonId], references: [id], onDelete: SetNull)
+  lostReasonDetail String?         @db.Text
+  source           ContactSource   @default(MANUAL)
+  notes            String?         @db.Text
+  wonAt            DateTime?
+  lostAt           DateTime?
+  lastActivityAt   DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  archivedAt       DateTime?
+
+  stageHistory DealStageHistory[]
+  activities   Activity[]
+  tasks        Task[]
+  meetings     Meeting[]
+  emails       EmailMessage[]
+  enrollments  SequenceEnrollment[]
+  quotes       Quote[]
+  trials       Trial[]
+  aiSessions   AiSession[]
+  submissions  FormSubmission[]
+
+  @@index([ownerId, stage])
+  @@index([stage])
+  @@index([nextActionAt])
+  @@index([contactId])
+  @@index([companyId])
+}
+
+model DealStageHistory {
+  id        String     @id @default(cuid())
+  dealId    String
+  deal      Deal       @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  fromStage DealStage?
+  toStage   DealStage
+  userId    String?
+  user      User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  note      String?
+  createdAt DateTime   @default(now())
+
+  @@index([dealId, createdAt])
+  @@index([toStage, createdAt])
+}
+
+// ───────────────────────────── Activités & tâches ─────────────────────────────
+
+model Activity {
+  id              String         @id @default(cuid())
+  type            ActivityType
+  title           String
+  body            String?        @db.Text
+  occurredAt      DateTime       @default(now())
+  contactId       String?
+  contact         Contact?       @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  companyId       String?
+  company         Company?       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  dealId          String?
+  deal            Deal?          @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  userId          String?
+  user            User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  callDirection   CallDirection?
+  callOutcome     CallOutcome?
+  callDurationSec Int?
+  meetingId       String?
+  emailMessageId  String?
+  quoteId         String?
+  orderId         String?
+  trialId         String?
+  aiSessionId     String?
+  metadata        Json?
+  createdAt       DateTime       @default(now())
+
+  @@index([contactId, occurredAt])
+  @@index([dealId, occurredAt])
+  @@index([companyId, occurredAt])
+  @@index([userId, type, occurredAt])
+}
+
+model Task {
+  id          String       @id @default(cuid())
+  title       String
+  description String?      @db.Text
+  type        TaskType     @default(TODO)
+  status      TaskStatus   @default(OPEN)
+  priority    TaskPriority @default(NORMAL)
+  source      TaskSource   @default(MANUAL)
+  dueAt       DateTime?
+  /// true : la tâche a une heure précise (sinon : « dans la journée »)
+  hasTime     Boolean      @default(false)
+  completedAt DateTime?
+  assigneeId  String
+  assignee    User         @relation("TaskAssignee", fields: [assigneeId], references: [id])
+  createdById String?
+  createdBy   User?        @relation("TaskCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  contactId   String?
+  contact     Contact?     @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  companyId   String?
+  company     Company?     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  dealId      String?
+  deal        Deal?        @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  meetingId   String?
+  meeting     Meeting?     @relation(fields: [meetingId], references: [id], onDelete: SetNull)
+  orderId     String?
+  order       Order?       @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  trialId     String?
+  trial       Trial?       @relation(fields: [trialId], references: [id], onDelete: SetNull)
+  stepRunId   String?      @unique
+  stepRun     SequenceStepRun? @relation(fields: [stepRunId], references: [id], onDelete: SetNull)
+  googleEventId String?
+  reminderSentAt DateTime?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  checkpoint TrialCheckpoint?
+
+  @@index([assigneeId, status, dueAt])
+  @@index([contactId])
+  @@index([dealId])
+  @@index([status, dueAt])
+}
+
+// ───────────────────────────── Agenda & rendez-vous ─────────────────────────────
+
+model Meeting {
+  id                 String        @id @default(cuid())
+  title              String
+  description        String?       @db.Text
+  type               MeetingType   @default(VIDEO)
+  status             MeetingStatus @default(SCHEDULED)
+  source             MeetingSource @default(MANUAL)
+  startAt            DateTime
+  endAt              DateTime
+  location           String?
+  videoUrl           String?
+  organizerId        String
+  organizer          User          @relation("MeetingOrganizer", fields: [organizerId], references: [id])
+  contactId          String?
+  contact            Contact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  companyId          String?
+  company            Company?      @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  dealId             String?
+  deal               Deal?         @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  /// [{ email, name? }]
+  attendees          Json?
+  bookingNotes       String?       @db.Text
+  manageToken        String        @unique @default(cuid())
+  googleEventId      String?
+  googleCalendarId   String?
+  icalUid            String?
+  confirmationSentAt DateTime?
+  reminder24hSentAt  DateTime?
+  reminder1hSentAt   DateTime?
+  cancelledAt        DateTime?
+  cancelReason       String?
+  completedAt        DateTime?
+  reportTaskCreatedAt DateTime?
+  meetTranscriptCheckedAt DateTime?
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  tasks      Task[]
+  aiSessions AiSession[]
+
+  @@index([organizerId, startAt])
+  @@index([contactId])
+  @@index([dealId])
+  @@index([status, startAt])
+  @@index([googleEventId])
+}
+
+// ───────────────────────────── Intégrations : Google & emails ─────────────────────────────
+
+model GoogleAccount {
+  id                 String            @id @default(cuid())
+  userId             String            @unique
+  user               User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  googleUserId       String
+  email              String
+  accessTokenEnc     String            @db.Text
+  refreshTokenEnc    String?           @db.Text
+  tokenExpiresAt     DateTime?
+  scopes             String            @db.Text
+  calendarId         String            @default("primary")
+  calendarSyncToken  String?           @db.Text
+  calendarLastSyncAt DateTime?
+  status             IntegrationStatus @default(ACTIVE)
+  lastError          String?           @db.Text
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  mailboxes Mailbox[]
+}
+
+model Mailbox {
+  id              String            @id @default(cuid())
+  userId          String
+  user            User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider        MailboxProvider
+  email           String
+  displayName     String?
+  isDefault       Boolean           @default(true)
+  googleAccountId String?
+  googleAccount   GoogleAccount?    @relation(fields: [googleAccountId], references: [id], onDelete: Cascade)
+  imapHost        String?
+  imapPort        Int?
+  imapSecure      Boolean           @default(true)
+  smtpHost        String?
+  smtpPort        Int?
+  smtpSecure      Boolean           @default(true)
+  username        String?
+  passwordEnc     String?           @db.Text
+  sentFolder      String?
+  syncEnabled     Boolean           @default(true)
+  /// Gmail : { historyId } — IMAP : { inbox: { uidValidity, lastUid }, sent: {…} }
+  syncState       Json?
+  lastSyncAt      DateTime?
+  status          IntegrationStatus @default(ACTIVE)
+  lastError       String?           @db.Text
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  emails EmailMessage[]
+
+  @@unique([userId, email])
+}
+
+model EmailMessage {
+  id               String         @id @default(cuid())
+  mailboxId        String?
+  mailbox          Mailbox?       @relation(fields: [mailboxId], references: [id], onDelete: SetNull)
+  direction        EmailDirection
+  status           EmailStatus
+  messageId        String
+  threadKey        String
+  providerId       String?
+  inReplyTo        String?
+  references       String?        @db.Text
+  fromEmail        String
+  fromName         String?
+  toEmails         String[]
+  ccEmails         String[]       @default([])
+  bccEmails        String[]       @default([])
+  subject          String
+  textBody         String?        @db.Text
+  htmlBody         String?        @db.Text
+  snippet          String?
+  sentAt           DateTime       @default(now())
+  contactId        String?
+  contact          Contact?       @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  dealId           String?
+  deal             Deal?          @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  userId           String?
+  user             User?          @relation(fields: [userId], references: [id], onDelete: SetNull)
+  stepRunId        String?        @unique
+  stepRun          SequenceStepRun? @relation(fields: [stepRunId], references: [id], onDelete: SetNull)
+  isAutomated      Boolean        @default(false)
+  /// [{ filename, contentType, size }]
+  attachments      Json?
+  handledAt        DateTime?
+  error            String?        @db.Text
+  attempts         Int            @default(0)
+  createdAt        DateTime       @default(now())
+
+  @@unique([mailboxId, messageId])
+  @@index([contactId, sentAt])
+  @@index([dealId, sentAt])
+  @@index([threadKey])
+  @@index([direction, handledAt])
+  @@index([userId, sentAt])
+}
+
+model EmailTemplate {
+  id        String           @id @default(cuid())
+  name      String
+  category  TemplateCategory @default(OTHER)
+  subject   String
+  body      String           @db.Text
+  ownerId   String?
+  owner     User?            @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+}
+
+// ───────────────────────────── Relances automatiques ─────────────────────────────
+
+model Sequence {
+  id                  String          @id @default(cuid())
+  name                String
+  description         String?         @db.Text
+  active              Boolean         @default(true)
+  trigger             SequenceTrigger
+  triggerStage        DealStage?
+  /// null = B2B et B2C
+  contactKind         ContactKind?
+  /// vide = toutes les cibles
+  segmentIds          String[]        @default([])
+  priority            Int             @default(0)
+  /// Envois limités aux heures et jours ouvrés (désactivable pour une série ponctuelle)
+  businessHoursOnly  Boolean @default(true)
+  /// Créé par le copilote IA (série ponctuelle)
+  createdByAssistant Boolean @default(false)
+  stopOnReply         Boolean         @default(true)
+  stopOnStageChange   Boolean         @default(true)
+  stopOnMeetingBooked Boolean         @default(true)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  steps       SequenceStep[]
+  enrollments SequenceEnrollment[]
+}
+
+model SequenceStep {
+  id               String           @id @default(cuid())
+  sequenceId       String
+  sequence         Sequence         @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  position         Int
+  type             SequenceStepType
+  /// Délai après l'étape précédente (ou après l'inscription pour la 1re étape)
+  delayDays        Int              @default(0)
+  delayHours       Int              @default(0)
+  delayMinutes     Int              @default(0)
+  /// Heure d'envoi préférée « HH:mm » (fuseau du commercial)
+  sendTime         String?
+  subject          String?
+  body             String?          @db.Text
+  taskTitle        String?
+  taskDescription  String?          @db.Text
+  requiresApproval Boolean          @default(false)
+  /// Email réécrit par l'IA pour chaque contact (cible, besoin, historique) avant envoi
+  aiPersonalize    Boolean          @default(false)
+  /// Étape retirée du scénario mais conservée pour l'historique des relances déjà exécutées
+  archivedAt       DateTime?
+
+  runs SequenceStepRun[]
+
+  @@unique([sequenceId, position])
+}
+
+model SequenceEnrollment {
+  id          String                @id @default(cuid())
+  sequenceId  String
+  sequence    Sequence              @relation(fields: [sequenceId], references: [id], onDelete: Cascade)
+  contactId   String
+  contact     Contact               @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  dealId      String?
+  deal        Deal?                 @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  orderId     String?
+  order       Order?                @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  quoteId     String?
+  trialId     String?
+  ownerId     String
+  owner       User                  @relation(fields: [ownerId], references: [id])
+  status      EnrollmentStatus      @default(ACTIVE)
+  stopReason  EnrollmentStopReason?
+  startedAt   DateTime              @default(now())
+  completedAt DateTime?
+  stoppedAt   DateTime?
+  createdAt   DateTime              @default(now())
+
+  runs SequenceStepRun[]
+
+  @@index([contactId, status])
+  @@index([dealId, status])
+  @@index([status])
+}
+
+model SequenceStepRun {
+  id           String             @id @default(cuid())
+  enrollmentId String
+  enrollment   SequenceEnrollment @relation(fields: [enrollmentId], references: [id], onDelete: Cascade)
+  stepId       String
+  step         SequenceStep       @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  position     Int
+  type         SequenceStepType
+  status       StepRunStatus      @default(SCHEDULED)
+  scheduledAt  DateTime
+  executedAt   DateTime?
+  repliedAt    DateTime?
+  /// Contenu personnalisé (édition avant validation)
+  /// Contenu personnalisé par l'IA (objet / message ci-dessous)
+  aiPersonalized  Boolean   @default(false)
+  subjectOverride String?
+  bodyOverride    String?         @db.Text
+  attempts     Int                @default(0)
+  error        String?            @db.Text
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+
+  email EmailMessage?
+  task  Task?
+
+  @@index([status, scheduledAt])
+  @@index([enrollmentId, position])
+}
+
+// ───────────────────────────── Devis, essais / pilotes, commandes ─────────────────────────────
+
+model Quote {
+  id              String      @id @default(cuid())
+  number          String      @unique
+  title           String?
+  status          QuoteStatus @default(DRAFT)
+  dealId          String?
+  deal            Deal?       @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  contactId       String
+  contact         Contact     @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  companyId       String?
+  company         Company?    @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  ownerId         String
+  owner           User        @relation(fields: [ownerId], references: [id])
+  issueDate       DateTime    @default(now())
+  validUntil      DateTime
+  currency        String      @default("EUR")
+  globalDiscountPct Decimal   @default(0) @db.Decimal(5, 2)
+  subtotalHT      Decimal     @default(0) @db.Decimal(12, 2)
+  discountHT      Decimal     @default(0) @db.Decimal(12, 2)
+  totalHT         Decimal     @default(0) @db.Decimal(12, 2)
+  totalVAT        Decimal     @default(0) @db.Decimal(12, 2)
+  totalTTC        Decimal     @default(0) @db.Decimal(12, 2)
+  notes           String?     @db.Text
+  terms           String?     @db.Text
+  publicToken     String      @unique @default(cuid())
+  sentAt          DateTime?
+  viewedAt        DateTime?
+  acceptedAt      DateTime?
+  acceptedByName  String?
+  acceptedIp      String?
+  refusedAt       DateTime?
+  refusalReason   String?     @db.Text
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  items QuoteItem[]
+
+  @@index([dealId])
+  @@index([contactId])
+  @@index([status])
+  @@index([ownerId, status])
+}
+
+model QuoteItem {
+  id          String   @id @default(cuid())
+  quoteId     String
+  quote       Quote    @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  productId   String?
+  product     Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  name        String
+  description String?  @db.Text
+  quantity    Decimal  @db.Decimal(12, 2)
+  unit        String   @default("unité")
+  unitPriceHT Decimal  @db.Decimal(12, 2)
+  discountPct Decimal  @default(0) @db.Decimal(5, 2)
+  vatRate     Decimal  @default(20) @db.Decimal(5, 2)
+  totalHT     Decimal  @db.Decimal(12, 2)
+  position    Int      @default(0)
+}
+
+model Trial {
+  id              String       @id @default(cuid())
+  title           String
+  status          TrialStatus  @default(PLANNED)
+  dealId          String?
+  deal            Deal?        @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  companyId       String?
+  company         Company?     @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  contactId       String?
+  contact         Contact?     @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  ownerId         String
+  owner           User         @relation(fields: [ownerId], references: [id])
+  startDate       DateTime?
+  endDate         DateTime?
+  location        String?
+  participants    Int?
+  objectives      String?      @db.Text
+  successCriteria String?      @db.Text
+  feedback        String?      @db.Text
+  rating          Int?
+  result          TrialResult?
+  convertedAt     DateTime?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  items       TrialItem[]
+  checkpoints TrialCheckpoint[]
+  tasks       Task[]
+
+  @@index([status])
+  @@index([ownerId])
+}
+
+model TrialItem {
+  id               String    @id @default(cuid())
+  trialId          String
+  trial            Trial     @relation(fields: [trialId], references: [id], onDelete: Cascade)
+  productId        String?
+  product          Product?  @relation(fields: [productId], references: [id], onDelete: SetNull)
+  name             String
+  quantity         Int       @default(1)
+  serialNumbers    String?   @db.Text
+  shippedAt        DateTime?
+  trackingNumber   String?
+  deliveredAt      DateTime?
+  returnExpected   Boolean   @default(true)
+  returnedAt       DateTime?
+  returnedQuantity Int?
+  notes            String?
+}
+
+model TrialCheckpoint {
+  id      String    @id @default(cuid())
+  trialId String
+  trial   Trial     @relation(fields: [trialId], references: [id], onDelete: Cascade)
+  title   String
+  dueAt   DateTime
+  doneAt  DateTime?
+  notes   String?   @db.Text
+  taskId  String?   @unique
+  task    Task?     @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@index([dueAt])
+}
+
+model Order {
+  id                  String      @id @default(cuid())
+  source              OrderSource @default(SHOPIFY)
+  shopifyOrderId      String?     @unique
+  number              String
+  contactId           String
+  contact             Contact     @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  companyId           String?
+  company             Company?    @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  currency            String      @default("EUR")
+  subtotal            Decimal     @default(0) @db.Decimal(12, 2)
+  totalDiscount       Decimal     @default(0) @db.Decimal(12, 2)
+  totalTax            Decimal     @default(0) @db.Decimal(12, 2)
+  totalShipping       Decimal     @default(0) @db.Decimal(12, 2)
+  total               Decimal     @default(0) @db.Decimal(12, 2)
+  financialStatus     String?
+  fulfillmentStatus   String?
+  processedAt         DateTime
+  paidAt              DateTime?
+  cancelledAt         DateTime?
+  fulfilledAt         DateTime?
+  shippingAddress     Json?
+  note                String?     @db.Text
+  tags                String[]    @default([])
+  installationDoneAt  DateTime?
+  onboardingDoneAt    DateTime?
+  satisfactionToken   String      @unique @default(cuid())
+  satisfactionScore   Int?
+  satisfactionComment String?     @db.Text
+  satisfactionAt      DateTime?
+  postPurchaseStartedAt DateTime?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  items       OrderItem[]
+  tasks       Task[]
+  enrollments SequenceEnrollment[]
+
+  @@index([contactId])
+  @@index([processedAt])
+}
+
+model OrderItem {
+  id                String   @id @default(cuid())
+  orderId           String
+  order             Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId         String?
+  product           Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  shopifyLineItemId String?
+  title             String
+  variantTitle      String?
+  sku               String?
+  quantity          Int
+  unitPrice         Decimal  @db.Decimal(12, 2)
+  total             Decimal  @db.Decimal(12, 2)
+}
+
+model ShopifyConnection {
+  id              String            @id @default(cuid())
+  shopDomain      String            @unique
+  authMode        ShopifyAuthMode
+  clientId        String?
+  clientSecretEnc String?           @db.Text
+  accessTokenEnc  String?           @db.Text
+  tokenExpiresAt  DateTime?
+  scopes          String?
+  apiVersion      String
+  /// Clé de signature des webhooks créés depuis l'admin Shopify (Paramètres > Notifications)
+  webhookSecretEnc String?          @db.Text
+  defaultOwnerId  String?
+  webhooksRegisteredAt DateTime?
+  lastSyncAt      DateTime?
+  lastSyncResult  Json?
+  status          IntegrationStatus @default(ACTIVE)
+  lastError       String?           @db.Text
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+}
+
+model ShopifyWebhookEvent {
+  id         String   @id @default(cuid())
+  webhookId  String   @unique
+  topic      String
+  shopDomain String
+  processedAt DateTime?
+  error      String?  @db.Text
+  createdAt  DateTime @default(now())
+}
+
+// ───────────────────────────── Formulaires du site ─────────────────────────────
+
+model WebForm {
+  id                  String             @id @default(cuid())
+  name                String
+  key                 String             @unique
+  active              Boolean            @default(true)
+  description         String?
+  contactKind         ContactKind        @default(B2C)
+  segmentId           String?
+  segment             Segment?           @relation(fields: [segmentId], references: [id], onDelete: SetNull)
+  assignmentStrategy  AssignmentStrategy @default(ROUND_ROBIN)
+  fixedOwnerId        String?
+  fixedOwner          User?              @relation(fields: [fixedOwnerId], references: [id], onDelete: SetNull)
+  createDeal          Boolean            @default(true)
+  sendConfirmation    Boolean            @default(true)
+  confirmationSubject String?
+  confirmationBody    String?            @db.Text
+  callbackDelayMinutes Int               @default(120)
+  successMessage      String?
+  redirectUrl         String?
+  allowedOrigins      String[]           @default([])
+  /// Définition des champs du formulaire hébergé / embarqué
+  fields              Json?
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  submissions FormSubmission[]
+}
+
+model FormSubmission {
+  id          String   @id @default(cuid())
+  formId      String
+  form        WebForm  @relation(fields: [formId], references: [id], onDelete: Cascade)
+  data        Json
+  contactId   String?
+  contact     Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  dealId      String?
+  deal        Deal?    @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  ownerId     String?
+  owner       User?    @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  isSpam      Boolean  @default(false)
+  isExistingContact Boolean @default(false)
+  ip          String?
+  userAgent   String?
+  pageUrl     String?
+  referrer    String?
+  utmSource   String?
+  utmMedium   String?
+  utmCampaign String?
+  createdAt   DateTime @default(now())
+
+  @@index([formId, createdAt])
+}
+
+// ───────────────────────────── Assistant IA ─────────────────────────────
+
+model AiSession {
+  id               String           @id @default(cuid())
+  kind             AiSessionKind
+  status           AiSessionStatus  @default(RECORDING)
+  title            String
+  userId           String
+  user             User             @relation("AiSessionUser", fields: [userId], references: [id])
+  contactId        String?
+  contact          Contact?         @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  dealId           String?
+  deal             Deal?            @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  meetingId        String?
+  meeting          Meeting?         @relation(fields: [meetingId], references: [id], onDelete: SetNull)
+  transcriptSource TranscriptSource @default(LIVE)
+  language         String           @default("fr")
+  consentConfirmed Boolean          @default(false)
+  startedAt        DateTime         @default(now())
+  endedAt          DateTime?
+  durationSec      Int?
+  transcript       String?          @db.Text
+  /// Compte rendu structuré produit par l'IA (puis édité par le commercial)
+  report           Json?
+  summary          String?          @db.Text
+  followUpTo       String?
+  followUpSubject  String?
+  followUpBody     String?          @db.Text
+  followUpSentAt   DateTime?
+  followUpEmailId  String?
+  validatedAt      DateTime?
+  validatedById    String?
+  validatedBy      User?            @relation("AiSessionValidator", fields: [validatedById], references: [id], onDelete: SetNull)
+  model            String?
+  error            String?          @db.Text
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  segments TranscriptSegment[]
+
+  @@index([userId, createdAt])
+  @@index([contactId])
+  @@index([meetingId])
+  @@index([status])
+}
+
+model TranscriptSegment {
+  id        String        @id @default(cuid())
+  sessionId String
+  session   AiSession     @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  index     Int
+  text      String?       @db.Text
+  speaker   String?
+  offsetMs  Int?
+  durationMs Int?
+  status    SegmentStatus @default(PENDING)
+  error     String?
+  createdAt DateTime      @default(now())
+
+  @@unique([sessionId, index])
+}
+
+// ───────────────────────────── Système ─────────────────────────────
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      NotificationType
+  title     String
+  body      String?
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  @@index([userId, readAt, createdAt])
+}
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+model Job {
+  id          String    @id @default(cuid())
+  type        String
+  payload     Json
+  runAt       DateTime  @default(now())
+  status      JobStatus @default(PENDING)
+  attempts    Int       @default(0)
+  maxAttempts Int       @default(5)
+  lastError   String?   @db.Text
+  lockedAt    DateTime?
+  dedupeKey   String?   @unique
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status, runAt])
+}
+
+model RateLimit {
+  key       String   @id
+  count     Int
+  resetAt   DateTime
+}
+
+/// Conversation avec le copilote IA (pilotage du CRM en langage naturel)
+model AgentConversation {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String   @default("Nouvelle conversation")
+  /// Messages au format du modèle (system exclu)
+  messages  Json     @default("[]")
+  /// Fil affiché à l'utilisateur : messages, actions effectuées, confirmations
+  display   Json     @default("[]")
+  /// Actions en attente de confirmation par l'utilisateur
+  pending   Json?
+  /// Traitement en cours (évite deux envois simultanés)
+  busyUntil DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, updatedAt])
+}

@@ -9,6 +9,7 @@ import { ContactStatusBadge, EmptyHint, PageHeader, SegmentBadge, StageBadge, Us
 import { Pagination, SearchFilter, SelectFilter, TabLinks } from "@/components/common/filters";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ExportButton, ImportButton, NewContactButton } from "./contacts-client";
+import { BulkBar, PageCheckbox, RowCheckbox, SelectionProvider } from "./selection";
 import { contactsWhere, type ContactSearch as Search } from "@/lib/contacts-query";
 
 export const metadata = { title: "Contacts" };
@@ -46,8 +47,9 @@ export default async function ContactsPage({ searchParams }: { searchParams: Pro
   ]);
   const query = new URLSearchParams(Object.entries(sp).filter(([k, v]) => k !== "page" && v) as [string, string][]).toString();
 
+  const { page: _p, ...filter } = sp;
   return (
-    <>
+    <SelectionProvider pageIds={contacts.map((c) => c.id)}>
       <PageHeader
         title="Contacts"
         description="Prospects et clients B2B / B2C, classés par cible."
@@ -69,12 +71,13 @@ export default async function ContactsPage({ searchParams }: { searchParams: Pro
             { value: "archives", label: "Archivés" },
           ]}
         />
-        <SearchFilter placeholder="Nom, email, téléphone, ville…" />
+        <SearchFilter placeholder="Mots-clés : nom, organisation, fonction, ville, notes, étiquette…" />
         <SelectFilter param="segment" placeholder="Toutes les cibles" options={[...segments.map((s) => ({ value: s.id, label: s.name })), { value: "none", label: "Sans cible" }]} />
         <SelectFilter param="kind" placeholder="B2B et B2C" options={[{ value: "B2B", label: "Professionnels (B2B)" }, { value: "B2C", label: "Particuliers (B2C)" }]} />
         <SelectFilter param="owner" placeholder="Tous les commerciaux" options={[{ value: "me", label: "Mes contacts" }, ...users.map((u) => ({ value: u.id, label: `${u.firstName} ${u.lastName}` }))]} />
         <SelectFilter param="source" placeholder="Toutes les origines" options={Object.entries(SOURCE_LABELS).map(([value, label]) => ({ value, label }))} />
       </div>
+      <BulkBar total={total} filter={filter} archived={sp.statut === "archives"} />
       <div className="overflow-hidden rounded-xl bg-card surface">
         {contacts.length === 0 ? (
           <EmptyHint icon={Users} title="Aucun contact trouvé">
@@ -84,6 +87,9 @@ export default async function ContactsPage({ searchParams }: { searchParams: Pro
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-8">
+                  <PageCheckbox />
+                </TableHead>
                 <TableHead>Contact</TableHead>
                 <TableHead>Organisation</TableHead>
                 <TableHead>Cible</TableHead>
@@ -97,6 +103,9 @@ export default async function ContactsPage({ searchParams }: { searchParams: Pro
             <TableBody>
               {contacts.map((c) => (
                 <TableRow key={c.id}>
+                  <TableCell className="w-8">
+                    <RowCheckbox id={c.id} />
+                  </TableCell>
                   <TableCell className="max-w-64">
                     <Link href={`/contacts/${c.id}`} className="font-medium hover:underline">
                       {contactDisplayName(c)}
@@ -130,6 +139,6 @@ export default async function ContactsPage({ searchParams }: { searchParams: Pro
         )}
         <Pagination page={page} pageSize={PAGE_SIZE} total={total} />
       </div>
-    </>
+    </SelectionProvider>
   );
 }

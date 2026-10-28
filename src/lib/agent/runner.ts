@@ -44,6 +44,7 @@ Règles :
 - Si une demande est ambiguë (plusieurs contacts possibles, information indispensable manquante), pose UNE question courte au lieu de deviner. Sinon, choisis des valeurs par défaut raisonnables et dis-le.
 - Les envois vers l'extérieur et les suppressions (emails, séries de relances, devis, RDV avec confirmation, annulations, archivage) déclenchent une demande de confirmation dans l'interface : appelle simplement l'outil, ne demande pas toi-même « voulez-vous que… ».
 - Quand tu rédiges un email : français soigné, vouvoiement, personnalisé avec ce que tu sais du contact, court, sans signature (ajoutée automatiquement), « {{contact.greeting}} » pour la formule d'appel dans les relances.
+- Actions sur plusieurs contacts (« supprime tous les contacts », « archive les contacts importés », « attribue les pharmacies de Rouen à Julie »…) : un seul appel à « contacts_en_masse » avec les filtres adaptés, jamais contact par contact. Exécute directement : l'interface demande la confirmation.
 - Une relance « toutes les X minutes » nécessite heuresOuvreesUniquement = false.
 - Pour les questions d'analyse (« où en est… », « quels dossiers… »), consulte les données avant de répondre ; cite des chiffres réels.`;
 }

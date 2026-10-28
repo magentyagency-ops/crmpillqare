@@ -77,6 +77,45 @@ async function resolveContact(ctx: ToolContext, args: { contactId?: string | nul
 const contactLabel = (c: { firstName: string | null; lastName: string | null; email: string | null; phone: string | null; company?: { name: string } | null }) =>
   `${contactDisplayName(c)}${c.company ? ` (${c.company.name})` : ""}`;
 
+
+/** Traduit les paramètres de l'outil « contacts_en_masse » en cible et opération. */
+async function bulkArgs(
+  a: { action: string; contactIds: string[] | null; motsCles: string | null; statutListe: string | null; cibleFiltre: string | null; typeClient: string | null; origine: string | null; etiquetteFiltre: string | null; commercialFiltreEmail: string | null; valeur: string | null },
+  ctx: ToolContext,
+) {
+  const segmentByName = async (name: string | null) => {
+    if (!name || /^aucune?$/i.test(name.trim())) return null;
+    const s = await db.segment.findFirst({ where: { name: { equals: name.trim(), mode: "insensitive" } } }) ?? (await db.segment.findFirst({ where: { name: { contains: name.trim(), mode: "insensitive" } } }));
+    if (!s) throw new Error(`Cible « ${name} » introuvable.`);
+    return s.id;
+  };
+  const target: import("@/lib/contacts-bulk").BulkTarget = a.contactIds?.length
+    ? { ids: a.contactIds }
+    : {
+        filter: {
+          q: a.motsCles ?? undefined,
+          statut: a.statutListe === "tous" ? undefined : (a.statutListe ?? undefined),
+          segment: a.cibleFiltre ? ((await segmentByName(a.cibleFiltre)) ?? "none") : undefined,
+          kind: a.typeClient ?? undefined,
+          source: a.origine ?? undefined,
+          tag: a.etiquetteFiltre ?? undefined,
+          owner: a.commercialFiltreEmail ? await userIdByEmail(a.commercialFiltreEmail, ctx.user.id) : undefined,
+        },
+      };
+  const v = a.valeur?.trim() ?? "";
+  const op: import("@/lib/contacts-bulk").BulkOp =
+    a.action === "supprimer" ? { type: "delete" }
+    : a.action === "archiver" ? { type: "archive" }
+    : a.action === "restaurer" ? { type: "restore" }
+    : a.action === "attribuer" ? { type: "owner", ownerId: await userIdByEmail(v, ctx.user.id) }
+    : a.action === "cible" ? { type: "segment", segmentId: await segmentByName(v) }
+    : a.action === "statut" ? { type: "status", status: (["PROSPECT", "CUSTOMER", "PARTNER", "INACTIVE"].includes(v.toUpperCase()) ? v.toUpperCase() : "PROSPECT") as "PROSPECT" }
+    : a.action === "etiquette" ? { type: "addTag", tag: v }
+    : { type: "doNotContact", value: true };
+  if (a.action === "restaurer" && !a.contactIds?.length && "filter" in target) target.filter.statut = "archives";
+  return { target, op };
+}
+
 export const TOOLS = {
   // ───────────── Lecture ─────────────
   rechercher: tool({
@@ -436,6 +475,41 @@ export const TOOLS = {
     async run({ contactId }) {
       const { archiveContactAction } = await import("@/actions/contacts");
       return unwrap(await archiveContactAction(contactId, true), "Contact archivé");
+    },
+  }),
+
+  contacts_en_masse: tool({
+    description:
+      "Action groupée sur plusieurs contacts : supprimer, archiver, restaurer, attribuer à un commercial, changer la cible ou le statut, ajouter une étiquette, marquer « ne pas contacter ». " +
+      "Vise soit une liste d'identifiants, soit TOUS les contacts correspondant aux filtres (tous les filtres à null = tous les contacts non archivés). Une seule demande de confirmation pour l'ensemble : utilise cet outil plutôt que d'agir contact par contact.",
+    schema: z.object({
+      action: z.enum(["supprimer", "archiver", "restaurer", "attribuer", "cible", "statut", "etiquette", "ne_pas_contacter"]),
+      contactIds: n(z.array(z.string())).describe("Contacts précis ; null pour cibler par filtres."),
+      motsCles: n(z.string()).describe("Mots-clés (nom, email, organisation, fonction, ville, notes, étiquettes)."),
+      statutListe: n(z.enum(["tous", "prospects", "clients", "archives"])),
+      cibleFiltre: n(z.string()).describe("Nom de la cible à filtrer, ou « aucune »."),
+      typeClient: n(z.enum(["B2B", "B2C"])),
+      origine: n(z.string()).describe("Origine : MANUAL, WEBSITE_FORM, BOOKING, SHOPIFY, EMAIL, IMPORT, REFERRAL, EVENT, PHONE, LINKEDIN, OTHER."),
+      etiquetteFiltre: n(z.string()),
+      commercialFiltreEmail: n(z.string()),
+      valeur: n(z.string()).describe("attribuer : email du commercial ; cible : nom de la cible (ou « aucune ») ; statut : PROSPECT/CUSTOMER/PARTNER/INACTIVE ; etiquette : texte."),
+    }),
+    async confirm(a, ctx) {
+      const { countBulk } = await import("@/lib/contacts-bulk");
+      const { target } = await bulkArgs(a, ctx);
+      const count = await countBulk(ctx.user, target);
+      if (!count) throw new Error("Aucun contact ne correspond à ces critères.");
+      const what: Record<string, string> = {
+        supprimer: "Supprimer définitivement", archiver: "Archiver", restaurer: "Restaurer", attribuer: `Attribuer à ${a.valeur}`, cible: `Passer en cible « ${a.valeur} »`,
+        statut: `Passer au statut ${a.valeur}`, etiquette: `Ajouter l'étiquette « ${a.valeur} » à`, ne_pas_contacter: "Marquer « ne pas contacter »",
+      };
+      return `${what[a.action]} ${count} contact(s)`;
+    },
+    async run(a, ctx) {
+      const { bulkContactsAction } = await import("@/actions/contacts");
+      const { target, op } = await bulkArgs(a, ctx);
+      const res = await bulkContactsAction(target, op);
+      return res.ok ? { ok: true, summary: res.data!.message, link: "/contacts" } : { ok: false, summary: res.error };
     },
   }),
 

@@ -437,3 +437,17 @@ export async function importContactsAction(
     return { created, updated, skipped };
   });
 }
+
+/** Action groupée sur une sélection de contacts (ou tous ceux qui correspondent aux filtres). */
+export async function bulkContactsAction(
+  target: import("@/lib/contacts-bulk").BulkTarget,
+  op: import("@/lib/contacts-bulk").BulkOp,
+): Promise<ActionResult<{ done: number; skipped: number; message: string }>> {
+  return runAction(async () => {
+    const user = await assertUser();
+    if (op.type === "delete") await assertRole("ADMIN");
+    const { runBulk, BULK_LABELS } = await import("@/lib/contacts-bulk");
+    const r = await runBulk(user, target, op);
+    return { done: r.done, skipped: r.skipped, message: `${BULK_LABELS[op.type]} : ${r.done} contact(s)${r.note ? `. ${r.note}` : ""}` };
+  });
+}

@@ -48,15 +48,22 @@ Règles :
 - Pour les questions d'analyse (« où en est… », « quels dossiers… »), consulte les données avant de répondre ; cite des chiffres réels.`;
 }
 
-async function callModel(messages: ChatMessage[], system: string) {
+/** Historique allégé : sans raisonnements chiffrés, à partir d'un message utilisateur récent (appels d'outils complets). */
+function slimHistory(messages: ChatMessage[]) {
+  const items = messages.filter((m) => (m as { type?: string }).type !== "reasoning");
+  const users = items.map((m, i) => ((m as { role?: string }).role === "user" ? i : -1)).filter((i) => i >= 0);
+  return items.slice(users.length > 6 ? users[users.length - 6] : 0);
+}
+
+async function requestModel(input: ChatMessage[], system: string, model: string) {
   const tools = (await toolDefinitions()).map((t) => ({ type: "function", name: t.function.name, description: t.function.description, parameters: t.function.parameters, strict: true }));
   const res = await fetch("https://api.openai.com/v1/responses", {
     method: "POST",
-    headers: { Authorization: `Bearer ${env.ai.openaiKey}`, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${env.ai.openaiKey?.trim()}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: process.env.OPENAI_AGENT_MODEL?.trim() || openaiModel("smart"),
+      model,
       instructions: system,
-      input: messages,
+      input,
       tools,
       parallel_tool_calls: true,
       reasoning: { effort: "low" },
@@ -66,8 +73,27 @@ async function callModel(messages: ChatMessage[], system: string) {
     }),
     signal: AbortSignal.timeout(150_000),
   });
-  const json = (await res.json().catch(() => ({}))) as { error?: { message?: string }; output?: { type: string; [key: string]: unknown }[] };
-  if (!res.ok) throw new Error(res.status === 401 ? "Clé OpenAI invalide." : `Service IA : ${json.error?.message ?? res.statusText}`);
+  const raw = await res.text();
+  let json: { error?: { message?: string }; output?: { type: string; [key: string]: unknown }[] } = {};
+  try {
+    json = JSON.parse(raw);
+  } catch {}
+  return { res, json, detail: json.error?.message || raw.slice(0, 300) || res.statusText };
+}
+
+async function callModel(messages: ChatMessage[], system: string) {
+  const model = process.env.OPENAI_AGENT_MODEL?.trim() || openaiModel("smart");
+  let { res, json, detail } = await requestModel(messages, system, model);
+  // Requête refusée : nouvel essai avec un historique allégé, puis avec le modèle rapide
+  if (res.status === 400 || res.status === 404) {
+    console.error("[copilote] OpenAI", res.status, detail);
+    ({ res, json, detail } = await requestModel(slimHistory(messages), system, model));
+    if ((res.status === 400 || res.status === 404) && model !== openaiModel("fast")) ({ res, json, detail } = await requestModel(slimHistory(messages), system, openaiModel("fast")));
+  }
+  if (!res.ok) {
+    console.error("[copilote] OpenAI", res.status, detail);
+    throw new Error(res.status === 401 ? "Clé OpenAI invalide." : `Service IA (${res.status}) : ${detail}`);
+  }
   const output = json.output ?? [];
   const calls = output.filter((o) => o.type === "function_call") as unknown as FunctionCall[];
   const text = output

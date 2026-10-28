@@ -44,6 +44,7 @@ export function ImportButton() {
   const [kind, setKind] = useState("");
   const [createDeals, setCreateDeals] = useState(true);
   const [startSequences, setStartSequences] = useState(false);
+  const [reading, setReading] = useState(false);
   const importer = useAction(importContactsAction, {
     success: false,
     onSuccess: (r) => {
@@ -95,25 +96,34 @@ export function ImportButton() {
               Annuler
             </Button>
             <Button
-              disabled={!file || importer.pending}
+              disabled={!file || importer.pending || reading}
               onClick={async () => {
                 if (!file) return;
                 let input: string | { sheets: { name: string; rows: string[][] }[] };
-                if (/\.csv$/i.test(file.name)) input = await file.text();
-                else {
-                  const XLSX = await import("xlsx");
-                  const wb = XLSX.read(await file.arrayBuffer(), { cellDates: true });
-                  input = {
-                    sheets: wb.SheetNames.map((name) => ({
-                      name,
-                      rows: XLSX.utils.sheet_to_json<string[]>(wb.Sheets[name]!, { header: 1, raw: false, defval: "", blankrows: false }),
-                    })),
-                  };
+                setReading(true);
+                try {
+                  if (/\.csv$/i.test(file.name)) input = await file.text();
+                  else {
+                    const XLSX = await import("xlsx");
+                    const wb = XLSX.read(new Uint8Array(await file.arrayBuffer()), { type: "array", cellDates: true });
+                    input = {
+                      sheets: wb.SheetNames.map((name) => ({
+                        name,
+                        rows: XLSX.utils.sheet_to_json<unknown[]>(wb.Sheets[name]!, { header: 1, raw: false, defval: "", blankrows: false }).map((r) => r.map((c) => String(c ?? ""))),
+                      })),
+                    };
+                  }
+                } catch (error) {
+                  toast.error(`Fichier illisible : ${error instanceof Error ? error.message : String(error)}`);
+                  return;
+                } finally {
+                  setReading(false);
                 }
+                toast.info("Lecture du fichier par l'IA… (quelques secondes à une minute)");
                 importer.run(input, { segmentId: segmentId || null, ownerId, kind: (kind || null) as "B2B" | "B2C" | null, createDeals, startSequences: createDeals && startSequences });
               }}
             >
-              {importer.pending && <Spinner />} Importer
+              {(importer.pending || reading) && <Spinner />} {importer.pending ? "Import en cours…" : "Importer"}
             </Button>
           </DialogFooter>
         </DialogContent>

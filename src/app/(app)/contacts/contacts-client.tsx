@@ -59,14 +59,14 @@ export function ImportButton() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Importer des contacts (CSV)</DialogTitle>
+            <DialogTitle>Importer des contacts (Excel ou CSV)</DialogTitle>
             <DialogDescription>
-              Colonnes reconnues automatiquement : prénom, nom, email, téléphone, société / établissement, fonction, code postal, ville, cible… Les contacts déjà présents
+              L'IA lit toutes les feuilles du fichier, repère les en-têtes et range chaque colonne dans le bon champ (prénom, nom, email, téléphone, établissement, fonction, ville, cible…). Les autres informations utiles sont gardées en note. Les contacts déjà présents
               (même email ou téléphone) sont complétés, jamais dupliqués.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <input type="file" accept=".csv,text/csv" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="block w-full text-sm" />
+            <input type="file" accept=".xlsx,.xls,.xlsm,.ods,.csv,text/csv" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="block w-full text-sm" />
             <div className="grid grid-cols-2 gap-3">
               <FormField label="Cible (si absente du fichier)">
                 <SelectField value={segmentId} onChange={setSegmentId} placeholder="Détecter / aucune" options={segments.map((s) => ({ value: s.id, label: s.name }))} />
@@ -98,8 +98,19 @@ export function ImportButton() {
               disabled={!file || importer.pending}
               onClick={async () => {
                 if (!file) return;
-                const text = await file.text();
-                importer.run(text, { segmentId: segmentId || null, ownerId, kind: (kind || null) as "B2B" | "B2C" | null, createDeals, startSequences: createDeals && startSequences });
+                let input: string | { sheets: { name: string; rows: string[][] }[] };
+                if (/\.csv$/i.test(file.name)) input = await file.text();
+                else {
+                  const XLSX = await import("xlsx");
+                  const wb = XLSX.read(await file.arrayBuffer(), { cellDates: true });
+                  input = {
+                    sheets: wb.SheetNames.map((name) => ({
+                      name,
+                      rows: XLSX.utils.sheet_to_json<string[]>(wb.Sheets[name]!, { header: 1, raw: false, defval: "", blankrows: false }),
+                    })),
+                  };
+                }
+                importer.run(input, { segmentId: segmentId || null, ownerId, kind: (kind || null) as "B2B" | "B2C" | null, createDeals, startSequences: createDeals && startSequences });
               }}
             >
               {importer.pending && <Spinner />} Importer

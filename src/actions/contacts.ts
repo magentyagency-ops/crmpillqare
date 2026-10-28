@@ -14,6 +14,7 @@ import { normalizeEmail, normalizePhone, capitalizeName } from "@/lib/normalize"
 import { parseDateTimeLocal } from "@/lib/dates";
 import { optionalEmail, optionalString, stringArray } from "@/lib/validation";
 import { mapFormFields } from "@/lib/forms";
+import { aiNormalizeSheet } from "@/lib/import-ai";
 import { detectSegment, loadSegmentCandidates } from "@/lib/segments";
 import { contactSearchWhere } from "@/lib/search";
 
@@ -362,17 +363,19 @@ function parseCsv(text: string): string[][] {
   return rows;
 }
 
-/** Import de contacts depuis un fichier CSV (colonnes reconnues automatiquement, sans doublon). */
+/** Import de contacts depuis un CSV ou un classeur Excel (feuilles lues et rangées par l'IA, sans doublon). */
 export async function importContactsAction(
-  csv: string,
+  input: string | { sheets: { name: string; rows: string[][] }[] },
   opts: { segmentId?: string | null; ownerId?: string | null; kind?: "B2B" | "B2C" | null; createDeals?: boolean; startSequences?: boolean },
 ): Promise<ActionResult<{ created: number; updated: number; skipped: number }>> {
   return runAction(async () => {
     const user = await assertUser();
-    const rows = parseCsv(csv.replace(/^﻿/, ""));
-    if (rows.length < 2) throw new UserError("Le fichier doit contenir une ligne d'en-têtes et au moins une ligne de données.");
-    if (rows.length > 5001) throw new UserError("5 000 lignes maximum par import.");
-    const headers = rows[0]!.map((h) => h.trim());
+    const sheets = (typeof input === "string" ? [{ name: "CSV", rows: parseCsv(input.replace(/^﻿/, "")) }] : input.sheets)
+      .map((sh) => ({ ...sh, rows: sh.rows.map((r) => r.map((c) => String(c ?? ""))).filter((r) => r.some((c) => c.trim())) }))
+      .filter((sh) => sh.rows.length >= 2);
+    if (!sheets.length) throw new UserError("Le fichier doit contenir une ligne d'en-têtes et au moins une ligne de données.");
+    if (sheets.reduce((n, sh) => n + sh.rows.length, 0) > 5000 + sheets.length) throw new UserError("5 000 lignes maximum par import.");
+    const records = (await Promise.all(sheets.map((sh) => aiNormalizeSheet(sh.name, sh.rows)))).flat();
     const candidates = await loadSegmentCandidates();
     // Premiers appels des dossiers importés : 15 par jour ouvré à partir du prochain jour ouvré, 9 h 30
     const { addBusinessDaysTz, zonedDateTime, dayKey } = await import("@/lib/dates");
@@ -381,8 +384,7 @@ export async function importContactsAction(
     let created = 0;
     let updated = 0;
     let skipped = 0;
-    for (const r of rows.slice(1)) {
-      const record = Object.fromEntries(headers.map((h, i) => [h, r[i]?.trim() ?? ""]));
+    for (const record of records) {
       const f = mapFormFields(record);
       if (!f.email && !f.phone && !f.lastName && !f.firstName) {
         skipped++;

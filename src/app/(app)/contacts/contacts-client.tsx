@@ -54,7 +54,7 @@ export function ImportButton() {
   return (
     <>
       <Button size="sm" variant="outline" onClick={() => setOpen(true)}>
-        <FileUp /> Importer
+        <FileUp /> Importer Excel / CSV
       </Button>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="sm:max-w-lg">
